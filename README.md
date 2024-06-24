@@ -6,7 +6,7 @@
 git clone https://github.com/Priyabrata017/Assignment
 ```
 ```
-cd Assignement/
+cd Assignment/
 ```
 ```
 git checkout master
