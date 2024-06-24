@@ -1,4 +1,4 @@
-# Multi-Class-Text-Classification
+# Sentiment Analysis
 
 ### Steps to execute the code
 ### Step 1. Clone the repository 
