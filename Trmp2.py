@@ -1,0 +1,134 @@
+from transformers import EvalPrediction
+from collections import defaultdict
+
+def compute_metrics(p: EvalPrediction):
+    predictions, labels = p.predictions, p.label_ids
+    inputs = p.inputs  # Access input features if needed
+
+    # 1. Parse Model Predictions into Spans
+    predicted_spans_batch = []
+    for i, output in enumerate(predictions):
+        predicted_spans = get_predicted_spans(output, inputs[i]) # Implement this
+        predicted_spans_batch.append(predicted_spans)
+
+    # 2. Format Ground Truth Spans
+    ground_truth_spans_batch = []
+    for i, label_sequence in enumerate(labels):
+        ground_truth_spans = get_ground_truth_spans(label_sequence, inputs[i]) # Implement this
+        ground_truth_spans_batch.append(ground_truth_spans)
+
+    # 3. Compare Spans and Calculate Metrics
+    results = compute_span_metrics(predicted_spans_batch, ground_truth_spans_batch) # Implement this
+    return results
+
+def get_predicted_spans(model_output, input_sequence):
+    """
+    Parses the model's output to extract predicted entity spans.
+    This function needs to be implemented based on your GLiNER model's specific output format.
+    It should return a list of tuples: (start_index, end_index, entity_type).
+
+    Args:
+        model_output: The prediction output for a single sequence from your GLiNER model.
+        input_sequence: The tokenized input sequence (if needed to determine span boundaries).
+    """
+    predicted_spans = []
+    # Placeholder - Implement based on your model's output
+    # Example: If your model outputs a list of (start, end, type)
+    # for prediction in model_output:
+    #     start, end, entity_type = ...
+    #     predicted_spans.append((start, end, entity_type))
+    return predicted_spans
+
+def get_ground_truth_spans(label_sequence, input_sequence):
+    """
+    Formats the ground truth labels into a list of entity spans.
+    This function needs to be implemented based on the format of your evaluation labels.
+    It should return a list of tuples: (start_index, end_index, entity_type).
+
+    Args:
+        label_sequence: The label information for a single sequence.
+        input_sequence: The tokenized input sequence (if needed to determine span boundaries).
+    """
+    ground_truth_spans = []
+    # Placeholder - Implement based on your label format
+    # Example: If your labels are IOB or similar, you'll need to process them
+    # to identify spans and their types.
+    return ground_truth_spans
+
+def compute_span_metrics(predicted_spans_batch, ground_truth_spans_batch):
+    """
+    Compares the predicted spans with the ground truth spans and calculates precision, recall, and F1-score.
+    """
+    all_predicted_spans = [span for seq_spans in predicted_spans_batch for span in seq_spans]
+    all_ground_truth_spans = [span for seq_spans in ground_truth_spans_batch for span in seq_spans]
+
+    tp = 0
+    fp = 0
+    fn = 0
+
+    for pred_span in all_predicted_spans:
+        if pred_span in all_ground_truth_spans:
+            tp += 1
+        else:
+            fp += 1
+
+    for gt_span in all_ground_truth_spans:
+        if gt_span not in all_predicted_spans:
+            fn += 1
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    results = {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+    }
+    return results
+
+# Example of how to integrate this into your Trainer:
+from transformers import Trainer, TrainingArguments, AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification
+
+# Assuming you have your model, tokenizer, train_dataset, eval_dataset
+
+training_args = TrainingArguments(
+    output_dir="./results",
+    evaluation_strategy="epoch",
+    learning_rate=2e-5,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    num_train_epochs=3,
+    weight_decay=0.01,
+    # ... other training arguments
+)
+
+# Assuming you are using a standard data collator for token classification
+data_collator = DataCollatorForTokenClassification(tokenizer)
+
+# Initialize your GLiNER model (replace with your actual model loading)
+# model = AutoModelForTokenClassification.from_pretrained("your_gliner_model_checkpoint", num_labels=your_num_labels)
+
+# Initialize your tokenizer (replace with your actual tokenizer loading)
+# tokenizer = AutoTokenizer.from_pretrained("your_gliner_tokenizer_checkpoint")
+
+# Initialize your Trainer
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    data_collator=data_collator,
+    compute_metrics=compute_metrics,
+    tokenizer=tokenizer,
+)
+
+# Start training
+trainer.train()
+
+# Evaluate
+eval_results = trainer.evaluate()
+print(eval_results)
